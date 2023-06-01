@@ -16,14 +16,13 @@ router.register('', TabInstanceList, basename='tab_instance_list')
 
 
 urlpatterns = [
-    path('',UserListView.as_view(),name = 'user-list'),
-    path('<company_name>/',ProjectListView.as_view(),name='project-list'),
-    path('<company_name>/<project_title_slug>/',ProjectDetailView.as_view(), name='project-detail'),
-    path('<company_name>/<project_title_slug>/projectinstances/',ProjectInstanceList.as_view(),
+    path('projects',ProjectListView.as_view(),name='project-list'),
+    path('projects/<project_title_slug>/',ProjectDetailView.as_view(), name='project-detail'),
+    path('projects/<project_title_slug>/projectinstances/',ProjectInstanceList.as_view(),
          name='projectinstance-list'),
-    path('<company_name>/<project_title_slug>/<project_instance_slug>/',ProjectInstanceDetail.as_view(),
+     path('projects/<project_title_slug>/<project_instance_slug>/',ProjectInstanceDetail.as_view(),
          name='projectinstance-detail'),
-    path('<company_name>/<project_title_slug>/<project_instance_slug>/tabinstances/',
+    path('projects/<project_title_slug>/<project_instance_slug>/tabinstances/',
          include(router.urls)),
 
     #path('projects/projectinstances',ProjectInstanceList.as_view(),name='projectinstance-list'),

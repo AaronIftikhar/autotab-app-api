@@ -19,15 +19,20 @@ from project.serializers import (
     ProjectSerializer,
     UserSerializer,
     TabInstanceMainFileSerializer,
+    TabInstanceWeightFileSerializer,
+    TabInstanceDictionaryFileSerializer,
+    TabInstanceRecodeFileSerializer,
+    TabInstanceRegroupFileSerializer
 )
+
+from project import serializers
 
 class UserListView(generics.ListAPIView):
 
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = serializers.UserSerializer
     permission_classes = [IsAuthenticated]
     #authentication_classes = [TokenAuthentication]
-    lookup_field = "company_name"
 
     def get_queryset(self):
         """Retrieve recipes for authenticated user"""
@@ -38,7 +43,7 @@ class UserListView(generics.ListAPIView):
 class ProjectListView(generics.ListCreateAPIView):
 
     queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    serializer_class = serializers.ProjectSerializer
     permission_classes = [IsAuthenticated]
     #authentication_classes = [TokenAuthentication]
 
@@ -55,7 +60,7 @@ class ProjectListView(generics.ListCreateAPIView):
 class ProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    serializer_class = serializers.ProjectSerializer
     permission_classes = [IsAuthenticated]
     #authentication_classes = [TokenAuthentication]
     lookup_field = "project_title_slug"
@@ -69,7 +74,7 @@ class ProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ProjectInstanceList(generics.ListCreateAPIView):
 
     queryset = ProjectInstance.objects.all()
-    serializer_class = ProjectInstanceSerializer
+    serializer_class = serializers.ProjectInstanceSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
@@ -77,24 +82,28 @@ class ProjectInstanceList(generics.ListCreateAPIView):
         project_title_slug = self.kwargs.get('project_title_slug')
         ind_project_title = Project.objects.get(project_title_slug = project_title_slug)
 
-        serializer.save(project_instance = ind_project_title)
+        serializer.save(project_instance = ind_project_title, user=self.request.user)
 
     def get_queryset(self):
         """Retrieve only instances from specific project"""
         project_title_slug = self.kwargs.get('project_title_slug')
         ind_project_title = Project.objects.get(project_title_slug =project_title_slug)
 
-        return self.queryset.filter(project_instance=ind_project_title)
+        return self.queryset.filter(project_instance=ind_project_title,company_name_project_instance=self.request.user.company_name)
     """ Overriding get_queryset method to make sure ONLY user's companies' projects are shown"""
 
 
 class ProjectInstanceDetail(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = ProjectInstance.objects.all()
-    serializer_class = ProjectInstanceSerializer
+    serializer_class = serializers.ProjectInstanceSerializer
     permission_classes = [IsAuthenticated]
     #authentication_classes = [TokenAuthentication]
     lookup_field = "project_instance_slug"
+
+    def get_queryset(self):
+        """Retrieve only instances """
+        return self.queryset.filter(company_name_project_instance=self.request.user.company_name)
 
     def perform_update(self, serializer):
         """Create a new project."""
@@ -102,22 +111,36 @@ class ProjectInstanceDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class TabInstanceList(viewsets.ModelViewSet):
+
     queryset = TabInstance.objects.all()
-    serializer_class = TabInstanceSerializer
+    serializer_class = serializers.TabInstanceSerializer
     permission_classes = [IsAuthenticated]
 
-    # def get_queryset(self):
-    #     """Retrieve recipes for authenticated user"""
-    #     return self
-    # """ Overriding get_queryset method to make sure ONLY user's recipes are shown"""
+    def get_queryset(self):
+        """Retrieve recipes for authenticated user"""
+
+        project_instance = self.kwargs.get('project_instance_slug')
+        ind_project_instance = ProjectInstance.objects.get(project_instance_slug =project_instance)
+
+        return self.queryset.filter(project_instance_tab_instance=ind_project_instance, company_name_project_instance_tab = self.request.user.company_name)
+
+    """ Overriding get_queryset method to make sure ONLY user's recipes are shown"""
 
     def get_serializer_class(self):
         """Return the serializer class for request"""
 
         if self.action == 'list':
-            return TabInstanceSerializer
+            return serializers.TabInstanceSerializer
         elif self.action == 'upload_file':
-            return TabInstanceMainFileSerializer
+            return serializers.TabInstanceMainFileSerializer
+        elif self.action == 'upload_weights':
+            return serializers.TabInstanceWeightFileSerializer
+        elif self.action == 'upload_dictionary':
+            return serializers.TabInstanceDictionaryFileSerializer
+        elif self.action == 'upload_recode':
+            return serializers.TabInstanceRecodeFileSerializer
+        elif self.action == 'upload_regroup':
+            return serializers.TabInstanceRegroupFileSerializer
 
         return self.serializer_class
 
@@ -126,11 +149,11 @@ class TabInstanceList(viewsets.ModelViewSet):
         project_instance_slug = self.kwargs.get('project_instance_slug')
         ind_project_instance_title = ProjectInstance.objects.get(project_instance_slug = project_instance_slug)
 
-        serializer.save(project_instance_tab_instance = ind_project_instance_title)
+        serializer.save(project_instance_tab_instance = ind_project_instance_title, user = self.request.user)
 
 
     @action(methods=['POST'],detail=True,url_path = 'upload-file')
-    def upload_file(self,request, pk=None):
+    def upload_file(self,request, pk=None,project_instance_slug=None,project_title_slug=None):
         """ Upload a file to instance"""
         tabinstance = self.get_object()
         serializer = self.get_serializer(tabinstance,data=request.data)
@@ -143,136 +166,59 @@ class TabInstanceList(viewsets.ModelViewSet):
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 
-# class TabInstanceDetail(generics.RetrieveUpdateAPIView):
-#     queryset = TabInstance.objects.all()
-#     serializer_class = TabInstanceSerializer
+    @action(methods=['POST'],detail=True,url_path = 'upload-weights')
+    def upload_weights(self,request, pk=None,project_instance_slug=None,project_title_slug=None):
+        """ Upload a file to instance"""
+        tabinstance = self.get_object()
+        serializer = self.get_serializer(tabinstance,data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            """ save image to db """
+            return Response(serializer.data, status = status.HTTP_200_OK)
+
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 
+    @action(methods=['POST'],detail=True,url_path = 'upload-dictionary')
+    def upload_dictionary(self,request, pk=None,project_instance_slug=None,project_title_slug=None):
+        """ Upload a file to instance"""
+        tabinstance = self.get_object()
+        serializer = self.get_serializer(tabinstance,data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            """ save image to db """
+            return Response(serializer.data, status = status.HTTP_200_OK)
+
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 
-# class ProjectInstanceViewSet(viewsets.ModelViewSet):
-#     queryset = ProjectInstance.objects.all()
-#     serializer_class = ProjectInstanceSerializer
-#     permission_classes = [IsAuthenticated]
-#     authentication_classes = [TokenAuthentication]
+    @action(methods=['POST'],detail=True,url_path = 'upload-recode')
+    def upload_recode(self,request, pk=None,project_instance_slug=None,project_title_slug=None):
+        """ Upload a file to instance"""
+        tabinstance = self.get_object()
+        serializer = self.get_serializer(tabinstance,data=request.data)
 
+        if serializer.is_valid():
+            serializer.save()
+            """ save image to db """
+            return Response(serializer.data, status = status.HTTP_200_OK)
 
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
-# class ProjectViewSet(viewsets.ModelViewSet):
+    @action(methods=['POST'],detail=True,url_path = 'upload-regroup')
+    def upload_regroup(self,request, pk=None,project_instance_slug=None,project_title_slug=None):
+        """ Upload a file to instance"""
+        tabinstance = self.get_object()
+        serializer = self.get_serializer(tabinstance,data=request.data)
 
-#     queryset = Project.objects.all()
-#     serializer_class = ProjectSummarySerializer
-#     permission_classes = [IsAuthenticated]
-#     authentication_classes = [TokenAuthentication]
+        if serializer.is_valid():
+            serializer.save()
+            """ save image to db """
+            return Response(serializer.data, status = status.HTTP_200_OK)
 
-#     def get_queryset(self):
-#         """Retrieve recipes for authenticated user"""
-#         return self.queryset.filter(company_name_project=self.request.user.company_name)
-#     """ Overriding get_queryset method to make sure ONLY user's companies' projects are shown"""
-
-#     def get_serializer_class(self):
-#         if self.action in ("create", "update", "partial_update"):
-#             return ProjectSummarySerializer
-#         else:
-#             return ProjectDetailSerializer
-
-#     def perform_create(self, serializer):
-#         """Create a new project."""
-#         serializer.save(user=self.request.user)
-
-
-# class ProjectViewSet(viewsets.ModelViewSet):
-#     """ Model view set is specifically set up to work with models """
-#     """ View for manage project APIs (plural as it will generate multiple endpoints)"""
-
-#     serializer_class = serializers.ProjectSerializer
-#     queryset = Project.objects.all()
-#     #authentication_classes = [TokenAuthentication]
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         """Retrieve recipes for authenticated user"""
-#         return self.queryset.filter(company_name_project=self.request.user.company_name).order_by('-id')
-#     """ Overriding get_queryset method to make sure ONLY user's companies' projects are shown"""
-
-    # def get_serializer_class(self):
-    #     """Return the serializer class for request."""
-    #     if self.action == 'list':
-    #         return serializers.ProjectSerializer
-    #     # elif self.action == 'upload-file':
-    #     #     return serializers.ProjectInstanceSerializer
-
-    #     return self.serializer_class
-
-#     def perform_create(self, serializer):
-#         """Create a new project."""
-#         serializer.save(user=self.request.user)
-
-
-# class ProjectInstanceViewSet(viewsets.ModelViewSet):
-#     """ Manage project instances in the database """
-#     """ MIXIN HAS TO GO BEFORE GENERICS, GENERIC LAST IN IMPORTS"""
-
-#     serializer_class = serializers.ProjectInstanceSerializer
-#     queryset = ProjectInstance.objects.all()
-#     #authentication_classes = [TokenAuthentication]
-#     permission_classes = [IsAuthenticated]
-
-    # def get_queryset(self):
-    #     """Retrieve instances for that project only"""
-    #     return self.queryset.filter(company_name_project_instance=self.request.user.company_name).order_by('-id')
-
-    # # above needs changing #
-
-    # def get_serializer_class(self):
-    #     """Return the serializer class for request."""
-    #     if self.action == 'upload-file':
-    #         return serializers.ProjectInstanceFileSerializer
-    #     else:
-    #         return serializers.ProjectInstanceSerializer
-
-
-    # @action(methods=['POST'],detail=True,url_path = 'upload-file')
-    # def upload_file(self,request, pk=None):
-    #     """ Upload a file to instance to recipe"""
-    #     project_instance = self.get_object()
-    #     serializer = self.get_serializer(project_instance,data=request.data)
-
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         """ save image to db """
-    #         return Response(serializer.data, status = status.HTTP_200_OK)
-
-    #     return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-
-    # def perform_create(self, serializer):
-    #     """Create a new instance."""
-    #     serializer.save(user=self.request.user)
-
-
-
-
-#     @action(methods=['POST'],detail=True,url_path = 'upload-image')
-#     def upload_image(self,request, pk=None):
-#         """ Upload an image to recipe"""
-#         recipe = self.get_object()
-#         serializer = self.get_serializer(recipe,data=request.data)
-
-#         if serializer.is_valid():
-#             serializer.save()
-#             """ save image to db """
-#             return Response(serializer.data, status = status.HTTP_200_OK)
-
-
-
-# mixins.DestroyModelMixin,
-#                  mixins.UpdateModelMixin,
-#                  mixins.ListModelMixin,
-#                  viewsets.GenericViewSet
-
-
-
-
+        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 
 

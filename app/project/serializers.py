@@ -4,6 +4,43 @@ from rest_framework import serializers
 from core.models import (Project,ProjectInstance,User,TabInstance)
 
 
+class TabInstanceRegroupFileSerializer(serializers.ModelSerializer):
+    """ Serializer for uploading main datafile to tab instance """
+
+    class Meta:
+        model = TabInstance
+        fields = ['id','regroup_data']
+        read_only_fields = ['id']
+        extra_kwargs = {'regroup_data':{'required':'True'}}
+
+class TabInstanceRecodeFileSerializer(serializers.ModelSerializer):
+    """ Serializer for uploading main datafile to tab instance """
+
+    class Meta:
+        model = TabInstance
+        fields = ['id','recoding_data']
+        read_only_fields = ['id']
+        extra_kwargs = {'recoding_data':{'required':'True'}}
+
+class TabInstanceDictionaryFileSerializer(serializers.ModelSerializer):
+    """ Serializer for uploading main datafile to tab instance """
+
+    class Meta:
+        model = TabInstance
+        fields = ['id','dictionary_data']
+        read_only_fields = ['id']
+        extra_kwargs = {'dictionary_data':{'required':'True'}}
+
+class TabInstanceWeightFileSerializer(serializers.ModelSerializer):
+    """ Serializer for uploading main datafile to tab instance """
+
+    class Meta:
+        model = TabInstance
+        fields = ['id','weight_data']
+        read_only_fields = ['id']
+        extra_kwargs = {'weight_data':{'required':'True'}}
+
+
 class TabInstanceMainFileSerializer(serializers.ModelSerializer):
     """ Serializer for uploading main datafile to tab instance """
 
@@ -17,8 +54,12 @@ class TabInstanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TabInstance
-        fields = ['id','tab_instance_name','main_data']
-        read_only_fields = ['id',]
+        fields = ['id','project_instance_tab_instance','user','tab_instance_name','company_name_project_instance_tab',
+                  'main_data','main_data_og_name','weight_data','weight_data_og_name','dictionary_data','dictionary_data_og_name',
+                  'recoding_data','recoding_data_og_name','regroup_data','regroup_data_og_name']
+        read_only_fields = ['id','user','project_instance_tab_instance','company_name_project_instance_tab',
+                            'main_data','main_data_og_name','weight_data','weight_data_og_name','dictionary_data','dictionary_data_og_name',
+                            'recoding_data','recoding_data_og_name','regroup_data','regroup_data_og_name']
 
 class ProjectInstanceSerializer(serializers.ModelSerializer):
 
@@ -27,8 +68,8 @@ class ProjectInstanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectInstance
-        fields = ['id','project_instance_name','project_instance_slug','project_instance','tabinstances']
-        read_only_fields = ['id','project_instance','project_instance_slug','tabinstances']
+        fields = ['id','user','project_instance_name','project_instance_slug','project_instance','tabinstances','company_name_project_instance']
+        read_only_fields = ['id','user','project_instance','project_instance_slug','tabinstances','company_name_project_instance']
 
 class ProjectSerializer(serializers.ModelSerializer):
 

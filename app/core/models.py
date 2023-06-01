@@ -11,14 +11,93 @@ from django.contrib.auth.models import (
 )
 
 
+def getProjectName(instance):
+    project_name = instance.project_instance_tab_instance.project_instance.project_title
+    return project_name
+
+def getProjectInstanceName(instance):
+    project_instance_name = instance.project_instance_tab_instance.project_instance_name
+    return project_instance_name
+
+def getProjectInstanceTabName(instance):
+    project_instance_tab_name = instance.tab_instance_name
+    return project_instance_tab_name
+
 def project_data_file_path(instance, filename):
     """ Generate file path for new project datafile"""
     ext = os.path.splitext(filename)[1]
     """" Here we tale the extenstion of the filename"""
     filename = f'{uuid.uuid4()}{ext}'
     """ Now create a new filname, which is the uuid and the extention, (uuid).png"""
-    return os.path.join('uploads','project',filename)
+    user_company_name = instance.user.company_name
+    user_email = instance.user.email
 
+    project_name = getProjectName(instance)
+
+    return os.path.join('uploads',user_company_name,user_email,project_name,'main_data',filename)
+
+def project_data_file_path_weights(instance, filename):
+    """ Generate file path for new project datafile"""
+    ext = os.path.splitext(filename)[1]
+    """" Here we tale the extenstion of the filename"""
+    filename = f'{uuid.uuid4()}{ext}'
+    """ Now create a new filname, which is the uuid and the extention, (uuid).png"""
+    user_company_name = instance.user.company_name
+    user_email = instance.user.email
+
+    project_name = getProjectName(instance)
+    return os.path.join('uploads',user_company_name,user_email,project_name,'weights',filename)
+
+
+def project_data_file_path_dicts(instance, filename):
+    """ Generate file path for new project datafile"""
+    ext = os.path.splitext(filename)[1]
+    """" Here we tale the extenstion of the filename"""
+    filename = f'{uuid.uuid4()}{ext}'
+    """ Now create a new filname, which is the uuid and the extention, (uuid).png"""
+    user_company_name = instance.user.company_name
+    user_email = instance.user.email
+
+    project_name = getProjectName(instance)
+
+    return os.path.join('uploads',user_company_name,user_email,project_name,'dictionaries',filename)
+
+
+def project_data_file_path_recode(instance, filename):
+    """ Generate file path for new project datafile"""
+    ext = os.path.splitext(filename)[1]
+    """" Here we tale the extenstion of the filename"""
+    filename = f'{uuid.uuid4()}{ext}'
+    """ Now create a new filname, which is the uuid and the extention, (uuid).png"""
+    user_company_name = instance.user.company_name
+    user_email = instance.user.email
+
+    project_name = getProjectName(instance)
+
+    return os.path.join('uploads',user_company_name,user_email,project_name,'recode',filename)
+
+
+def project_data_file_path_regroup(instance, filename):
+    """ Generate file path for new project datafile"""
+    ext = os.path.splitext(filename)[1]
+    """" Here we tale the extenstion of the filename"""
+    filename = f'{uuid.uuid4()}{ext}'
+    """ Now create a new filname, which is the uuid and the extention, (uuid).png"""
+    user_company_name = instance.user.company_name
+    user_email = instance.user.email
+
+    project_name = getProjectName(instance)
+
+    return os.path.join('uploads',user_company_name,user_email,project_name,'regroup',filename)
+
+
+
+
+def get_original_file_name(instance, filename):
+
+    og_filename = os.path.splitext(filename)[1]
+
+    return og_filename
 
 class UserManager(BaseUserManager):
     """ Manager for users """
@@ -90,6 +169,14 @@ class ProjectInstance(models.Model):
     """ Project = HMT """
     """ Project Instance = Wave 11 """
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="linked_project_instances",
+    )
+
+    company_name_project_instance = models.CharField(max_length=255)
+
     project_instance_name = models.CharField(null = True,max_length=255,unique=True)
     project_instance = models.ForeignKey(Project, on_delete=models.CASCADE,
                                           null=True, related_name="projectinstances")
@@ -97,6 +184,10 @@ class ProjectInstance(models.Model):
 
     def __str__(self):
         return self.project_instance_name
+
+    def save(self, *args, **kwargs):
+        self.company_name_project_instance = ((str(self.user.email)).split("@",1)[1]).split('.')[0]
+        super(ProjectInstance, self).save(*args, **kwargs) # Call the "real" save() method.
 
 
 # need some functions to save files somewhere #
@@ -108,13 +199,115 @@ class TabInstance(models.Model):
     """ Tab Instance = HMT, Wave 11, Xtab_v1 """
     """ Here we need all the files, weighting, dictionary, regrourp, recode"""
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="linked_project_tab_instances",
+    )
+
     tab_instance_name = models.CharField(null = True,max_length=255,unique=True)
     project_instance_tab_instance = models.ForeignKey(ProjectInstance, on_delete=models.CASCADE,
                                                       null=True, related_name="tabinstances")
+    company_name_project_instance_tab = models.CharField(max_length=255)
 
-    """ Now need all file fields """
+    """ Now the main data file field """
 
-    main_data = models.FileField(null=True, upload_to= project_data_file_path)
+    main_data = models.FileField(null=True, blank= True, upload_to= project_data_file_path)
+    main_data_og_name = models.CharField(max_length=255, null=True, blank = True)
+
+    def get_filename(self):
+
+        if self.main_data.name is None:
+            return ""
+        else:
+            return os.path.basename(self.main_data.name)
+
+    """ Now the weights file field """
+
+    weight_data = models.FileField(null=True,blank=True, upload_to= project_data_file_path_weights)
+    weight_data_og_name = models.CharField(max_length=255,null=True, blank = True)
+
+    def get_filename_weights(self):
+        if self.weight_data.name is None:
+            return ""
+        else:
+            return os.path.basename(self.weight_data.name)
+
+    """ Now the dictionary file field """
+
+    dictionary_data = models.FileField(null=True,blank=True, upload_to= project_data_file_path_dicts)
+    dictionary_data_og_name = models.CharField(max_length=255,null=True, blank = True)
+
+    def get_filename_dictionary(self):
+        if self.dictionary_data.name is None:
+            return ""
+        else:
+            return os.path.basename(self.dictionary_data.name)
+
+    """ Now the recoding file field """
+
+    recoding_data = models.FileField(null=True,blank=True, upload_to= project_data_file_path_recode)
+    recoding_data_og_name = models.CharField(max_length=255,null=True, blank = True)
+
+    def get_filename_recode(self):
+        if self.recoding_data.name is None:
+            return ""
+        else:
+            return os.path.basename(self.recoding_data.name)
+
+    """ Now the regroup file field """
+
+    regroup_data = models.FileField(null=True,blank=True, upload_to= project_data_file_path_regroup)
+    regroup_data_og_name = models.CharField(max_length=255,null=True, blank = True)
+
+    def get_filename_regroup(self):
+        if self.regroup_data.name is None:
+            return ""
+        else:
+            return os.path.basename(self.regroup_data.name)
+
+    """" Over write save method """
+
+    def save(self, *args, **kwargs):
+
+        self.company_name_project_instance_tab = ((str(self.user.email)).split("@",1)[1]).split('.')[0]
+
+        if self.get_filename() == "":
+            # This means it should be null
+            self.main_data_og_name = None
+        else:
+            self.main_data_og_name = self.get_filename()
+
+        if self.get_filename_weights() == "":
+            # This means it should be null
+            self.weight_data_og_name = None
+        else:
+            self.weight_data_og_name = self.get_filename_weights()
+
+        if self.get_filename_dictionary() == "":
+            # This means it should be null
+            self.dictionary_data_og_name = None
+        else:
+            self.dictionary_data_og_name = self.get_filename_dictionary()
+
+        if self.get_filename_recode() == "":
+            # This means it should be null
+            self.recoding_data_og_name = None
+        else:
+            self.recoding_data_og_name = self.get_filename_recode()
+
+        if self.get_filename_regroup() == "":
+            # This means it should be null
+            self.regroup_data_og_name = None
+        else:
+            self.regroup_data_og_name = self.get_filename_regroup()
+
+        super(TabInstance, self).save(*args, **kwargs) # Call the "real" save() method.
+
+
+
+
+
 
 
 
